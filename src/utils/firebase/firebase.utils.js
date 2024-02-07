@@ -8,6 +8,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
 } from "firebase/auth";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -20,7 +21,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const firebaseAapp = initializeApp(firebaseConfig);
+const firebaseApp = initializeApp(firebaseConfig);
 
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({
@@ -30,9 +31,39 @@ provider.setCustomParameters({
 export const auth = getAuth();
 export const signWithGooglePopup = () =>
   signInWithPopup(auth, provider)
-    .then((result) => {
-      console.log("Logged In", result);
+    .then((userCredential) => {
+      const user = userCredential.user;
+      console.log("Logged In", user);
+      return { user }; // Return the user object
     })
     .catch((error) => {
-      console.log("Caught error Popup closed");
+      console.error("Error during sign-in", error);
+      throw error; // Rethrow the error for the caller to handle
     });
+
+export const db = getFirestore();
+export const createUserDocFromAuth = async (userAuth) => {
+  const userDocRef = doc(db, "users", userAuth.uid);
+
+  console.log(userDocRef);
+
+  const userSnapShot = await getDoc(userDocRef);
+  console.log(userSnapShot);
+  console.log(userSnapShot.exists());
+
+  if (!userSnapShot.exists()) {
+    const { displayName, email } = userAuth;
+    const createdAt = new Date();
+    try {
+      await setDoc(userDocRef, {
+        displayName,
+        email,
+        createdAt,
+      });
+    } catch (error) {
+      console.log(" error is", error.message);
+    }
+  }
+
+  return userDocRef;
+};
